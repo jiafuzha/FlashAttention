@@ -1,0 +1,34 @@
+ninja_required_version = 1.3
+cxx = /mnt/DP_disk1/miniconda3/bin/x86_64-conda-linux-gnu-c++
+nvcc = /usr/bin/nvcc
+
+cflags = -DTORCH_EXTENSION_NAME=flash -DTORCH_API_INCLUDE_EXTENSION_H -DPYBIND11_COMPILER_TYPE=\"_gcc\" -DPYBIND11_STDLIB=\"_libstdcpp\" -DPYBIND11_BUILD_ABI=\"_cxxabi1011\" -I/usr/local/cuda/include -isystem /mnt/DP_disk1/miniconda3/lib/python3.8/site-packages/torch/include -isystem /mnt/DP_disk1/miniconda3/lib/python3.8/site-packages/torch/include/torch/csrc/api/include -isystem /mnt/DP_disk1/miniconda3/lib/python3.8/site-packages/torch/include/TH -isystem /mnt/DP_disk1/miniconda3/lib/python3.8/site-packages/torch/include/THC -isystem /mnt/DP_disk1/miniconda3/include/python3.8 -D_GLIBCXX_USE_CXX11_ABI=0 -fPIC -std=c++17 -g
+post_cflags = 
+cuda_cflags = -ccbin /mnt/DP_disk1/miniconda3/bin/x86_64-conda-linux-gnu-cc -DTORCH_EXTENSION_NAME=flash -DTORCH_API_INCLUDE_EXTENSION_H -DPYBIND11_COMPILER_TYPE=\"_gcc\" -DPYBIND11_STDLIB=\"_libstdcpp\" -DPYBIND11_BUILD_ABI=\"_cxxabi1011\" -I/usr/local/cuda/include -isystem /mnt/DP_disk1/miniconda3/lib/python3.8/site-packages/torch/include -isystem /mnt/DP_disk1/miniconda3/lib/python3.8/site-packages/torch/include/torch/csrc/api/include -isystem /mnt/DP_disk1/miniconda3/lib/python3.8/site-packages/torch/include/TH -isystem /mnt/DP_disk1/miniconda3/lib/python3.8/site-packages/torch/include/THC -isystem /mnt/DP_disk1/miniconda3/include/python3.8 -D_GLIBCXX_USE_CXX11_ABI=0 -D__CUDA_NO_HALF_OPERATORS__ -D__CUDA_NO_HALF_CONVERSIONS__ -D__CUDA_NO_BFLOAT16_CONVERSIONS__ -D__CUDA_NO_HALF2_OPERATORS__ --expt-relaxed-constexpr -gencode=arch=compute_70,code=compute_70 -gencode=arch=compute_70,code=sm_70 --compiler-options '-fPIC' -D_GLIBCXX_USE_CXX11_ABI=0 -g -std=c++17
+cuda_post_cflags = 
+cuda_dlink_post_cflags = 
+ldflags = -shared -L/usr/lib/x86_64-linux-gnu -g -L/mnt/DP_disk1/miniconda3/lib/python3.8/site-packages/torch/lib -lc10 -lc10_cuda -ltorch_cpu -ltorch_cuda -ltorch -ltorch_python -L/usr/lib64 -lcudart
+
+rule compile
+  command = $cxx -MMD -MF $out.d $cflags -c $in -o $out $post_cflags
+  depfile = $out.d
+  deps = gcc
+
+rule cuda_compile
+  depfile = $out.d
+  deps = gcc
+  command = $nvcc --generate-dependencies-with-compile --dependency-output $out.d $cuda_cflags -c $in -o $out $cuda_post_cflags
+
+
+
+rule link
+  command = $cxx $in $ldflags -o $out
+
+build main.o: compile /mnt/DP_disk1/jiafuzha/code-repo/FlashAttention.C/src/main.cpp
+build flashattention.cuda.o: cuda_compile /mnt/DP_disk1/jiafuzha/code-repo/FlashAttention.C/src/flashattention.cu
+
+
+
+build flash.so: link main.o flashattention.cuda.o
+
+default flash.so
